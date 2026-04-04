@@ -1,0 +1,31 @@
+experiment:
+  name: clip_frozen_gated
+  output_dir: outputs/clip_frozen_gated/
+
+dataset:
+  data_dir: data
+  max_length: 77
+
+model:
+  type: clip
+  clip_model: openai/clip-vit-base-patch32
+  num_classes: 2
+  dropout: 0.2
+  encoder_strategy: frozen
+  fusion: gated         # g=sigmoid(W*[img;txt]), out=g*img+(1-g)*txt -> MLP
+
+training:
+  epochs: 50
+  batch_size: 16
+  lr: 1.0e-4
+  weight_decay: 1.0e-4
+  fp16: false
+  grad_accumulation_steps: 1
+  early_stopping_patience: 7
+  label_smoothing: 0.0
+  num_workers: 4
+  device: cuda
+
+logging:
+  wandb_project: hateful-memes-clf
+  log_every: 1

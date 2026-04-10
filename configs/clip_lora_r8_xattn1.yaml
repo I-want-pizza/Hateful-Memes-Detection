@@ -19,7 +19,7 @@ model:
   lora_dropout: 0.1
 
 training:
-  epochs: 50
+  epochs: 70
   batch_size: 16
   lr: 1.0e-4
   weight_decay: 1.0e-4

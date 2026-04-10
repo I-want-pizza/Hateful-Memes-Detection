@@ -10,6 +10,10 @@ set -euo pipefail
 LOG_FILE="run_all.log"
 PYTHON="${PYTHON:-python}"   # override with: PYTHON=python3 bash run_all.sh
 
+# ── Step 0: Code snapshot to Yandex Disk (fast, ~MB) ─────────────────────────
+bash scripts/backup_code_yadisk.sh 2>&1 | tee -a "$LOG_FILE" || \
+    echo "[WARN] Code snapshot failed — continuing (check YADISK_TOKEN in .env)"
+
 # ── All experiments in execution order ───────────────────────────────────────
 CONFIGS=(
     # Group 1: Baselines
@@ -101,4 +105,10 @@ $PYTHON run_ablation.py 2>&1 | tee -a "$LOG_FILE" || log "Ablation failed (non-f
 log "Compiling results summary..."
 $PYTHON summarize_results.py 2>&1 | tee -a "$LOG_FILE" || log "Summary failed (non-fatal)"
 
-log "====== COMPLETE — see results_summary.csv and ablation_results.csv ======"
+log "Running analysis scripts (plots, SOTA comparison, ensemble, error analysis)..."
+bash analysis/run_analysis.sh 2>&1 | tee -a "$LOG_FILE" || log "Analysis failed (non-fatal)"
+
+log "Creating full backup to Yandex Disk (data + checkpoints + outputs)..."
+bash scripts/backup_full_yadisk.sh 2>&1 | tee -a "$LOG_FILE" || log "Backup failed (non-fatal — run manually: bash scripts/backup_full_yadisk.sh)"
+
+log "====== COMPLETE — results in results_summary.csv, ablation_results.csv, analysis_outputs/ ======"

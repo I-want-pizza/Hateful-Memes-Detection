@@ -324,9 +324,16 @@ def test_checkpoint(data_dir, tmp_path="outputs/_smoke_test/ckpt_test.pt"):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def main():
+    # Default data dir: from .env / settings, fallback to "data"
+    try:
+        from config.settings import settings as _s
+        _default_data_dir = str(_s.data_dir)
+    except Exception:
+        _default_data_dir = "data"
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--data-dir", type=str, default="data",
+        "--data-dir", type=str, default=_default_data_dir,
         help="Path to Hateful Memes dataset directory (containing img/, train.jsonl, etc.)"
     )
     parser.add_argument(

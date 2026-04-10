@@ -13,11 +13,12 @@ import time
 from pathlib import Path
 
 import torch
-import torch.cuda.amp as amp
+import torch.amp as amp
 from tqdm import tqdm
 
 import wandb
 
+from config.settings import settings
 from utils.checkpoint import save_checkpoint
 from utils.metrics import compute_metrics
 
@@ -42,16 +43,20 @@ class Trainer:
 
         label_smoothing  = float(tcfg.get("label_smoothing", 0.0))
         self.criterion   = torch.nn.CrossEntropyLoss(label_smoothing=label_smoothing)
-        self.scaler      = amp.GradScaler(enabled=self.use_fp16)
+        amp_device       = device if device == "cuda" else "cpu"
+        self.scaler      = amp.GradScaler(amp_device, enabled=self.use_fp16 and device == "cuda")
 
         # CSV logging
         self.csv_path = self.output_dir / "metrics.csv"
         self._csv_header_written = False
 
-        # wandb
+        # wandb — API key из settings (.env), project из конфига или settings
+        if settings.wandb_api_key:
+            import os
+            os.environ["WANDB_API_KEY"] = settings.wandb_api_key
         lcfg = cfg.get("logging", {})
         wandb.init(
-            project = lcfg.get("wandb_project", "hateful-memes-clf"),
+            project = lcfg.get("wandb_project", settings.wandb_project),
             name    = cfg["experiment"]["name"],
             config  = cfg,
             dir     = str(self.output_dir),
@@ -99,7 +104,7 @@ class Trainer:
         for step, batch in enumerate(tqdm(self.train_loader, desc="Train", leave=False)):
             batch = {k: v.to(self.device) for k, v in batch.items()}
 
-            with amp.autocast(enabled=self.use_fp16):
+            with amp.autocast(self.device, enabled=self.use_fp16 and self.device == "cuda"):
                 logits = self.model(
                     batch["pixel_values"],
                     batch["input_ids"],
@@ -126,7 +131,7 @@ class Trainer:
         self.model.eval()
         all_logits, all_labels = [], []
 
-        with amp.autocast(enabled=self.use_fp16):
+        with amp.autocast(self.device, enabled=self.use_fp16 and self.device == "cuda"):
             for batch in tqdm(self.val_loader, desc="Val", leave=False):
                 batch = {k: v.to(self.device) for k, v in batch.items()}
                 logits = self.model(
@@ -199,18 +204,11 @@ class Trainer:
 
             # Checkpoint + early stopping
             if metrics["auroc"] > best_auroc:
-                best_auroc  = metrics["auroc"]
+                best_auroc   = metrics["auroc"]
                 patience_cnt = 0
                 save_checkpoint(self.model, self.optimizer, epoch, metrics, self.cfg, best_ckpt)
-                wandb.run.summary["best_auroc"]   = best_auroc
-                wandb.run.summary["best_epoch"]   = epoch
-                # Upload checkpoint as wandb artifact
-                artifact = wandb.Artifact(
-                    name=f"model-{self.cfg['experiment']['name']}",
-                    type="model",
-                )
-                artifact.add_file(best_ckpt)
-                wandb.log_artifact(artifact)
+                wandb.run.summary["best_auroc"] = best_auroc
+                wandb.run.summary["best_epoch"] = epoch
                 self.logger.info(f"  ✓ New best AUC: {best_auroc:.4f} — checkpoint saved")
             else:
                 patience_cnt += 1
@@ -218,6 +216,15 @@ class Trainer:
                 if patience_cnt >= self.patience:
                     self.logger.info("Early stopping triggered.")
                     break
+
+        # Upload only the final best checkpoint as a single wandb artifact
+        if Path(best_ckpt).exists():
+            artifact = wandb.Artifact(
+                name=f"model-{self.cfg['experiment']['name']}",
+                type="model",
+            )
+            artifact.add_file(best_ckpt)
+            wandb.log_artifact(artifact)
 
         wandb.finish()
         self.logger.info(f"Training complete. Best Val AUC: {best_auroc:.4f}")

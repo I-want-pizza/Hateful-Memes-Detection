@@ -4,8 +4,8 @@ data/
 # Training outputs — large checkpoints
 outputs/
 results_summary.csv
-ablation_results.csv
-run_all.log
+summary/ablation_results.csv
+summary/run_all.log
 
 # Python
 __pycache__/

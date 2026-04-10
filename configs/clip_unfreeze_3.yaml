@@ -15,7 +15,7 @@ model:
   fusion: concat
 
 training:
-  epochs: 30
+  epochs: 42
   batch_size: 16
   lr: 1.0e-4
   lr_backbone: 2.0e-6

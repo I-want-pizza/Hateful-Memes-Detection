@@ -15,6 +15,7 @@ import yaml
 from torch.utils.data import DataLoader
 from transformers import CLIPProcessor, ViltProcessor
 
+from config.settings import settings
 from dataset.hateful_memes import HatefulMemesDataset
 from models.clip_classifier import CLIPClassifier
 from models.vilt_classifier import ViLTClassifier
@@ -94,7 +95,8 @@ def main() -> None:
     logger.info(f"Config     : {config_path}")
     logger.info(f"Seed       : {args.seed}")
 
-    device = cfg["training"].get("device", "cuda")
+    # device: cfg > settings > "cpu" fallback
+    device = cfg["training"].get("device", settings.device)
     if device == "cuda" and not torch.cuda.is_available():
         logger.warning("CUDA not available — falling back to CPU")
         device = "cpu"
@@ -119,13 +121,16 @@ def main() -> None:
     logger.info(f"Model      : {model_name}")
 
     # ── Datasets ──────────────────────────────────────────────────────────
-    data_root    = Path(cfg["dataset"]["data_dir"])
+    # data_dir priority: config value (if not "data") → settings.data_dir (.env)
+    cfg_data = cfg["dataset"].get("data_dir", "data")
+    data_root = settings.data_dir if cfg_data == "data" else Path(cfg_data)
+    logger.info(f"Data dir   : {data_root}")
     train_dataset = HatefulMemesDataset(data_root, split="train")
     val_dataset   = HatefulMemesDataset(data_root, split="val")
     logger.info(f"Train: {len(train_dataset)}  Val: {len(val_dataset)}")
 
     collate_fn   = MultimodalCollator(processor, max_length=max_length)
-    num_workers  = cfg["training"].get("num_workers", 4)
+    num_workers  = cfg["training"].get("num_workers", settings.num_workers)
     batch_size   = cfg["training"]["batch_size"]
 
     train_loader = DataLoader(

@@ -17,7 +17,7 @@ model:
   gradient_checkpointing: false
 
 training:
-  epochs: 15
+  epochs: 21
   batch_size: 16
   lr: 2.0e-5
   weight_decay: 0.05

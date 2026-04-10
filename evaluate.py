@@ -15,6 +15,8 @@ import yaml
 from torch.utils.data import DataLoader
 from transformers import CLIPProcessor, ViltProcessor
 
+from config.settings import settings
+
 from dataset.hateful_memes import HatefulMemesDataset
 from evaluators.evaluator import Evaluator
 from models.clip_classifier import CLIPClassifier
@@ -65,7 +67,8 @@ def main() -> None:
     load_checkpoint(ckpt_path, model, device=device)
 
     # ── Dataset ───────────────────────────────────────────────────────────
-    data_root = Path(cfg["dataset"]["data_dir"])
+    cfg_data  = cfg["dataset"].get("data_dir", "data")
+    data_root = settings.data_dir if cfg_data == "data" else Path(cfg_data)
     dataset   = HatefulMemesDataset(data_root, split=args.split)
 
     collate_fn  = MultimodalCollator(processor, max_length=max_length)

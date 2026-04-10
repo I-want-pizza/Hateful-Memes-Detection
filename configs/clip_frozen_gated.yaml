@@ -15,7 +15,7 @@ model:
   fusion: gated         # g=sigmoid(W*[img;txt]), out=g*img+(1-g)*txt -> MLP
 
 training:
-  epochs: 50
+  epochs: 70
   batch_size: 16
   lr: 1.0e-4
   weight_decay: 1.0e-4

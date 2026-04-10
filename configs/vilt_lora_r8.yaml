@@ -20,7 +20,7 @@ model:
   gradient_checkpointing: false
 
 training:
-  epochs: 30
+  epochs: 42
   batch_size: 32
   lr: 2.0e-4
   weight_decay: 0.05

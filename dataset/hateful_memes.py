@@ -64,6 +64,11 @@ class HatefulMemesDataset(Dataset):
                     if line:
                         self.samples.append(SampleDict(**json.loads(line)))
 
+    @property
+    def data(self) -> List[SampleDict]:
+        """Alias for self.samples — for backward compatibility with analysis scripts."""
+        return self.samples
+
     def __len__(self) -> int:
         return len(self.samples)
 
